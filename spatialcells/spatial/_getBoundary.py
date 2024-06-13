@@ -33,15 +33,17 @@ def getBoundary(anndata, communitycolumn, communityIndexList, alpha=100, debug=F
     polygons = [Polygon(edge[:, 0, :]).buffer(0) for edge in edge_components]
     boundary = MultiPolygon(polygons)
     # make sure the boundary is valid and points of interest are inside
-    boundary = make_valid(boundary).buffer(1)
+    boundary = make_valid(boundary).buffer(alpha / 100)
     if boundary.geom_type == "Polygon":
         boundary = MultiPolygon([boundary])
+
+    # Ensure that holes do not intersect each other or the boundary
     new_boundary = []
     for poly in boundary.geoms:
         holes = poly.interiors
         hole_polygons = [Polygon(hole) for hole in holes]
-        # prevent holes from touching the boundary
-        hole_limit = Polygon(poly.exterior).buffer(-1)
+        # set limit to shrink holes tangent to the boundary
+        hole_limit = Polygon(poly.exterior).buffer(-alpha / 100)
         hole_multipoly = shapely.unary_union(hole_polygons) & hole_limit
         if hole_multipoly.geom_type == "Polygon":
             hole_multipoly = MultiPolygon([hole_multipoly])
